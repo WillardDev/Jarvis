@@ -17,6 +17,7 @@ special characters that cannot be spoken.
 - Never describe formatting, just say the words.
 - Keep it brief: two or three sentences unless you are asked for more detail.
 - Answer directly, then stop. Do not ask whether you can help with anything else.
+- You have access to tools for getting time, setting timers, searching web, taking notes, checking calendar, and sending emails. When using tools that send messages, delete data, or spend money, always ask for confirmation first.
 """
 
 
