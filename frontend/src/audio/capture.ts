@@ -1,4 +1,4 @@
-const RESAMPLE_RATIO = 3 // 48 kHz -> 16 kHz
+const RESAMPLE_RATIO_DEFAULT = 3 // assume 48 kHz -> 16 kHz
 
 class Resampler {
   private ratio: number
@@ -11,7 +11,7 @@ class Resampler {
     const output = new Int16Array(outputLength)
     let outputIndex = 0
     let inputIndex = 0
-    while (inputIndex < input.length - this.ratio) {
+    while (inputIndex < input.length - this.ratio && outputIndex < outputLength) {
       const i0 = Math.floor(inputIndex)
       const i1 = i0 + 1
       const t = inputIndex - i0
@@ -30,12 +30,14 @@ class InputHandler {
   private ctx: AudioContext
   private processor: ScriptProcessorNode | null = null
   private source: MediaStreamAudioSourceNode | null = null
-  private resampler = new Resampler(48000, 16000)
+  private resampler: Resampler
   private onFrame: (data: ArrayBuffer) => void
 
   constructor(ctx: AudioContext, onFrame: (data: ArrayBuffer) => void) {
     this.ctx = ctx
     this.onFrame = onFrame
+    // Use actual context sample rate
+    this.resampler = new Resampler(ctx.sampleRate, 16000)
   }
 
   async start(stream: MediaStream) {
@@ -44,7 +46,9 @@ class InputHandler {
     this.processor.onaudioprocess = (e) => {
       const input = e.inputBuffer.getChannelData(0)
       const resampled = this.resampler.resample(input)
-      this.onFrame(resampled.buffer)
+      if (resampled.length > 0) {
+        this.onFrame(resampled.buffer)
+      }
     }
     this.source.connect(this.processor)
     this.processor.connect(this.ctx.destination)
@@ -64,13 +68,15 @@ export class AudioCapture {
   private stream: MediaStream | null = null
 
   constructor() {
-    this.ctx = new AudioContext({ sampleRate: 48000 })
+    this.ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
   }
 
   async start(onFrame: (data: ArrayBuffer) => void) {
     this.stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+    if (this.ctx.state === 'suspended') {
+      await this.ctx.resume()
+    }
     this.handler = new InputHandler(this.ctx, onFrame)
-    await this.ctx.resume()
     await this.handler.start(this.stream)
   }
 
@@ -78,5 +84,8 @@ export class AudioCapture {
     this.handler?.stop()
     this.stream?.getTracks().forEach((t) => t.stop())
     this.stream = null
+    if (this.ctx.state !== 'closed') {
+      this.ctx.close()
+    }
   }
 }

@@ -28,7 +28,7 @@ from pipecat.transports.websocket.fastapi import (
     FastAPIWebsocketParams,
     FastAPIWebsocketTransport,
 )
-from pipecat.turns.user_turn_strategies import UserTurnStrategies
+from pipecat.turns.user_turn_strategies import ExternalUserTurnStrategies, UserTurnStrategies
 
 from app.api.serializer import JarvisSerializer
 from app.api.session import JarvisSession, SessionWriter
@@ -72,28 +72,24 @@ def build_voice_pipeline(
         ),
     )
 
-    # Phase 2: Use VAD for hands-free turn detection
     vad_analyzer = SileroVADAnalyzer(
         params=VADParams(
             confidence=0.7,
             start_secs=0.2,
-            stop_secs=0.8,  # Tune to avoid cutting off mid-thought
+            stop_secs=0.8,
             min_volume=0.6,
         )
     )
     vad_processor = VADProcessor(vad_analyzer=vad_analyzer)
 
-    aggregators = LLMContextAggregatorPair(
-        LLMContext(),
-        user_params=LLMUserAggregatorParams(
-            # Use VAD-based turn strategies for hands-free operation
-            user_turn_strategies=UserTurnStrategies(),
-        ),
-    )
-
-    observer = PipelineObserver(session)
-
     if settings.turn_mode == "vad":
+        aggregators = LLMContextAggregatorPair(
+            LLMContext(),
+            user_params=LLMUserAggregatorParams(
+                user_turn_strategies=UserTurnStrategies(),
+                vad_analyzer=vad_analyzer,
+            ),
+        )
         pipeline = Pipeline(
             [
                 transport.input(),
@@ -107,6 +103,12 @@ def build_voice_pipeline(
             ]
         )
     else:
+        aggregators = LLMContextAggregatorPair(
+            LLMContext(),
+            user_params=LLMUserAggregatorParams(
+                user_turn_strategies=ExternalUserTurnStrategies(),
+            ),
+        )
         pipeline = Pipeline(
             [
                 transport.input(),
@@ -120,27 +122,7 @@ def build_voice_pipeline(
             ]
         )
 
-    worker = PipelineWorker(
-        pipeline,
-        params=PipelineParams(
-            audio_in_sample_rate=settings.stt_sample_rate,
-            audio_out_sample_rate=settings.tts_sample_rate,
-            enable_metrics=True,
-        ),
-        observers=[observer],
-        # A voice session is idle whenever the user is thinking, so the default
-        # idle timeout would kill the conversation.
-        idle_timeout_secs=None,
-    )
-
-    @transport.event_handler("on_client_disconnected")
-    async def _on_client_disconnected(transport, websocket) -> None:
-        # Without this the pipeline would keep running after the browser is
-        # gone, holding the provider connections open.
-        await worker.queue_frame(EndFrame())
-
-    return VoicePipeline(worker=worker, transport=transport, observer=observer)
-
+    observer = PipelineObserver(session)
 
     worker = PipelineWorker(
         pipeline,
