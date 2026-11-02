@@ -10,6 +10,7 @@ from loguru import logger
 
 from app.api.routes import router
 from app.config import get_settings
+from app.wakeword.routes import router as wakeword_router
 
 
 @asynccontextmanager
@@ -39,6 +40,7 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(router)
+    app.include_router(wakeword_router)
     return app
 
 

@@ -87,7 +87,7 @@ def build_voice_pipeline(
             LLMContext(),
             user_params=LLMUserAggregatorParams(
                 user_turn_strategies=UserTurnStrategies(),
-                vad_analyzer=vad_analyzer,
+                # vad_analyzer=vad_analyzer,
             ),
         )
         pipeline = Pipeline(
