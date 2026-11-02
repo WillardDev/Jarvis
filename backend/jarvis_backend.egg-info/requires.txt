@@ -1,0 +1,11 @@
+fastapi>=0.115
+uvicorn[standard]>=0.30
+pydantic-settings>=2.4
+python-dotenv>=1.0
+loguru>=0.7
+pipecat-ai[anthropic,cartesia,deepgram,elevenlabs,runner,silero,websocket]>=1.13.0
+
+[dev]
+pytest>=8.3
+pytest-asyncio>=0.24
+ruff>=0.7

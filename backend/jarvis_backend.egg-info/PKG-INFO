@@ -1,0 +1,15 @@
+Metadata-Version: 2.4
+Name: jarvis-backend
+Version: 0.1.0
+Summary: Streaming voice assistant backend built on FastAPI and Pipecat
+Requires-Python: >=3.11
+Requires-Dist: fastapi>=0.115
+Requires-Dist: uvicorn[standard]>=0.30
+Requires-Dist: pydantic-settings>=2.4
+Requires-Dist: python-dotenv>=1.0
+Requires-Dist: loguru>=0.7
+Requires-Dist: pipecat-ai[anthropic,cartesia,deepgram,elevenlabs,runner,silero,websocket]>=1.13.0
+Provides-Extra: dev
+Requires-Dist: pytest>=8.3; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.24; extra == "dev"
+Requires-Dist: ruff>=0.7; extra == "dev"
